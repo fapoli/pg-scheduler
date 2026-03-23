@@ -1,0 +1,37 @@
+{
+  "name": "@fapoli/pg-scheduler",
+  "version": "1.0.0",
+  "description": "PostgreSQL-backed distributed task scheduler for Node.js",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "postgres",
+    "postgresql",
+    "scheduler",
+    "task-queue",
+    "distributed",
+    "pg"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "pg": ">=8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}
