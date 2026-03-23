@@ -1,5 +1,9 @@
 # @fapoli/pg-scheduler
 
+[![npm](https://img.shields.io/npm/v/@fapoli/pg-scheduler)](https://www.npmjs.com/package/@fapoli/pg-scheduler)
+[![GitHub repo](https://img.shields.io/badge/github-fapoli%2Flospec--cli-blue?logo=github)](https://github.com/fapoli/lospec-cli)
+[![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+
 A PostgreSQL-backed distributed task scheduler for Node.js. Inspired by [db-scheduler](https://github.com/kagkarlsson/db-scheduler).
 
 ## Features

@@ -1,6 +1,6 @@
 {
   "name": "@fapoli/pg-scheduler",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "PostgreSQL-backed distributed task scheduler for Node.js",
   "type": "module",
   "main": "dist/index.js",
@@ -15,7 +15,10 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "keywords": [
     "postgres",
@@ -26,12 +29,18 @@
     "pg"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fapoli/pg-scheduler.git"
+  },
   "peerDependencies": {
     "pg": ">=8.0.0"
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "^11.13.0",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
   }
 }
