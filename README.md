@@ -127,6 +127,7 @@ await scheduleTask({
   taskInstance: 'unique-instance-id',
   taskData: { foo: 'bar' }, // pass null if no data
   executionTime: new Date(Date.now() + 5000), // optional, defaults to now
+  tableName: 'scheduled_tasks',              // optional, defaults to 'scheduled_tasks'
 });
 
 // Reschedule an existing task (throws if not found or currently running)
@@ -136,6 +137,7 @@ await rescheduleTask({
   taskInstance: 'unique-instance-id',
   taskData: { foo: 'baz' },
   executionTime: new Date(Date.now() + 10000),
+  tableName: 'scheduled_tasks',              // optional, defaults to 'scheduled_tasks'
 });
 ```
 
