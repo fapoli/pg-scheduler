@@ -44,8 +44,7 @@ export async function setup() {
     database: container.getDatabase(),
   });
   await client.connect();
-  await client.query(`
-    CREATE TABLE test_tasks (
+  const tableSchema = `(
       task_name            TEXT        NOT NULL,
       task_instance        TEXT        NOT NULL,
       task_data            JSONB,
@@ -59,8 +58,9 @@ export async function setup() {
       version              BIGINT      NOT NULL DEFAULT 1,
       priority             INT,
       PRIMARY KEY (task_name, task_instance)
-    )
-  `);
+    )`;
+  await client.query(`CREATE TABLE test_tasks ${tableSchema}`);
+  await client.query(`CREATE TABLE scheduled_tasks ${tableSchema}`);
   await client.end();
 }
 

@@ -7,6 +7,7 @@ import {
   updateTimedOutExecutions,
   deleteTask,
   heartbeat,
+  DEFAULT_TABLE_NAME,
 } from "../postgres/store.js";
 
 export interface Logger {
@@ -247,7 +248,16 @@ export interface WorkerHandle {
   shutdown(timeoutMs?: number): Promise<void>;
 }
 
-export function startWorker(params: {
+export function startWorker({
+  pool,
+  tableName = DEFAULT_TABLE_NAME,
+  workerId = `${os.hostname()}-${process.pid}`,
+  pollingIntervalMs = 10000,
+  batchSize = 10,
+  heartbeatTimeoutMs = 300000,
+  heartbeatIntervalMs = heartbeatTimeoutMs / 3,
+  logger = console,
+}: {
   pool: Pool;
   tableName?: string;
   workerId?: string;
@@ -257,16 +267,6 @@ export function startWorker(params: {
   heartbeatIntervalMs?: number;
   logger?: Logger;
 }): WorkerHandle {
-  const {
-    pool,
-    tableName = "scheduled_tasks",
-    workerId = `${os.hostname()}-${process.pid}`,
-    pollingIntervalMs = 10000,
-    batchSize = 10,
-    heartbeatTimeoutMs = 300000,
-    heartbeatIntervalMs = heartbeatTimeoutMs / 3,
-    logger = console,
-  } = params;
 
   let stopping = false;
   let cyclePromise: Promise<void> = Promise.resolve();
