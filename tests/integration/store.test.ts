@@ -9,6 +9,7 @@ import {
   rescheduleTask,
   updateTimedOutExecutions,
   heartbeat,
+  DEFAULT_TABLE_NAME,
 } from "../../src/postgres/store.js";
 
 const TABLE = "test_tasks";
@@ -33,6 +34,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await pool.query(`TRUNCATE TABLE ${TABLE}`);
+  await pool.query(`TRUNCATE TABLE ${DEFAULT_TABLE_NAME}`);
 });
 
 // Helper to read a row directly from the DB
@@ -43,6 +45,19 @@ async function getRow(taskName: string, taskInstance: string) {
   );
   return result.rows[0] ?? null;
 }
+
+describe("default tableName", () => {
+  it("scheduleTask uses the default table when tableName is omitted", async () => {
+    await scheduleTask({ pool, taskName: "default-t", taskInstance: "i1", taskData: { x: 1 } });
+
+    const result = await pool.query(
+      `SELECT * FROM ${DEFAULT_TABLE_NAME} WHERE task_name = $1 AND task_instance = $2`,
+      ["default-t", "i1"]
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].task_data).toEqual({ x: 1 });
+  });
+});
 
 describe("scheduleTask", () => {
   it("inserts a row with the given task data", async () => {

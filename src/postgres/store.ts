@@ -12,6 +12,8 @@ import {
   UPDATE_TASK_SCHEDULE_SQL,
 } from "./postgres.sql.js";
 
+export const DEFAULT_TABLE_NAME = "scheduled_tasks";
+
 function assertValidTableName(tableName: string): void {
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(tableName)) {
     throw new Error(`Invalid table name: "${tableName}"`);
@@ -180,15 +182,21 @@ export async function deleteTask(params: {
 }
 
 
-export async function scheduleTask(params: {
+export async function scheduleTask({
+  pool,
+  tableName = DEFAULT_TABLE_NAME,
+  taskName,
+  taskInstance,
+  taskData,
+  executionTime,
+}: {
   pool: Pool;
-  tableName: string;
+  tableName?: string;
   taskName: string;
   taskInstance: string;
   taskData: unknown;
   executionTime?: Date;
 }): Promise<void> {
-  const { pool, tableName, taskName, taskInstance, taskData, executionTime } = params;
   assertValidTableName(tableName);
 
   await query(pool, INSERT_TASK_IF_NOT_EXISTS_SQL(tableName), [
@@ -199,15 +207,21 @@ export async function scheduleTask(params: {
   ]);
 }
 
-export async function rescheduleTask(params: {
+export async function rescheduleTask({
+  pool,
+  tableName = DEFAULT_TABLE_NAME,
+  taskName,
+  taskInstance,
+  taskData,
+  executionTime,
+}: {
   pool: Pool;
-  tableName: string;
+  tableName?: string;
   taskName: string;
   taskInstance: string;
   taskData: unknown;
   executionTime: Date;
 }): Promise<void> {
-  const { pool, tableName, taskName, taskInstance, taskData, executionTime } = params;
   assertValidTableName(tableName);
 
   const result = await query(pool, UPDATE_TASK_SCHEDULE_SQL(tableName), [
