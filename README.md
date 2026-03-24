@@ -6,6 +6,14 @@
 
 A PostgreSQL-backed distributed task scheduler for Node.js. Inspired by [db-scheduler](https://github.com/kagkarlsson/db-scheduler).
 
+## Why does this exist?
+
+In distributed systems, running background jobs reliably is non-trivial.
+
+When multiple instances of an application are running, naive schedulers will execute the same task in every instance—causing duplicate work, race conditions, and inconsistent state.
+
+This project uses PostgreSQL as a coordination layer to ensure that tasks are executed by only one worker at a time. By leveraging row-level locking (`FOR UPDATE SKIP LOCKED`), it enables safe, distributed job execution without requiring additional infrastructure.
+
 ## Features
 
 - Distributed-safe via `FOR UPDATE SKIP LOCKED`
