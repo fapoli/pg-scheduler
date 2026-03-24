@@ -56,9 +56,12 @@ CREATE TABLE IF NOT EXISTS scheduled_tasks (
   PRIMARY KEY (task_name, task_instance)
 );
 
+CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_last_heartbeat
+    ON scheduled_tasks (last_heartbeat);
+
 CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_picker
-  ON scheduled_tasks (priority DESC NULLS LAST, execution_time ASC)
-  WHERE picked = FALSE;
+    ON scheduled_tasks (priority DESC NULLS LAST, execution_time ASC)
+    WHERE picked = FALSE;
 ```
 
 ## Usage
