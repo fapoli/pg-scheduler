@@ -1,18 +1,17 @@
-import type { Pool, QueryResult, QueryResultRow } from "pg";
-import type { Logger } from "../worker/worker.js";
+import type { Pool, QueryResult, QueryResultRow } from 'pg';
+import type { Logger } from '../worker/worker.js';
 import {
   UPDATE_DUE_TASKS_PICKED_SQL,
   UPDATE_TASK_SUCCESS_SQL,
   UPDATE_TASK_FAILURE_SQL,
   UPDATE_TASK_HEARTBEAT_SQL,
-
   UPDATE_TIMED_OUT_EXECUTIONS_SQL,
   DELETE_TASK_SQL,
   INSERT_TASK_IF_NOT_EXISTS_SQL,
   UPDATE_TASK_SCHEDULE_SQL,
-} from "./postgres.sql.js";
+} from './postgres.sql.js';
 
-export const DEFAULT_TABLE_NAME = "scheduled_tasks";
+export const DEFAULT_TABLE_NAME = 'scheduled_tasks';
 
 function assertValidTableName(tableName: string): void {
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(tableName)) {
@@ -156,7 +155,9 @@ export async function updateTimedOutExecutions(params: {
   const { pool, tableName, heartbeatTimeoutMs } = params;
   assertValidTableName(tableName);
 
-  const result = await query(pool, UPDATE_TIMED_OUT_EXECUTIONS_SQL(tableName), [heartbeatTimeoutMs]);
+  const result = await query(pool, UPDATE_TIMED_OUT_EXECUTIONS_SQL(tableName), [
+    heartbeatTimeoutMs,
+  ]);
 
   return result.rowCount ?? 0;
 }
@@ -180,7 +181,6 @@ export async function deleteTask(params: {
     );
   }
 }
-
 
 export async function scheduleTask({
   pool,

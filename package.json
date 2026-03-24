@@ -18,7 +18,11 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "lint": "eslint src tests --ext .ts,.tsx",
+    "lint:fix": "eslint src tests --ext .ts,.tsx --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [
     "postgres",
@@ -37,10 +41,17 @@
     "pg": ">=8.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@testcontainers/postgresql": "^11.13.0",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.0.0",
-    "typescript": "^5.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.1",
+    "typescript": "5.9.x",
+    "typescript-eslint": "^8.57.2",
     "vitest": "^3.0.0"
   }
 }

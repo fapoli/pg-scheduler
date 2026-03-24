@@ -1,5 +1,5 @@
-import os from "os";
-import type { Pool } from "pg";
+import os from 'os';
+import type { Pool } from 'pg';
 import {
   pickDueTasks,
   markSuccess,
@@ -8,7 +8,7 @@ import {
   deleteTask,
   heartbeat,
   DEFAULT_TABLE_NAME,
-} from "../postgres/store.js";
+} from '../postgres/store.js';
 
 export interface Logger {
   info(message: string): void;
@@ -216,12 +216,12 @@ function startHeartbeat(params: {
   let stopped = false;
   let timer: NodeJS.Timeout | null = null;
 
-  async function tick() {
+  async function tick(): Promise<void> {
     if (stopped) return;
     try {
       await heartbeat({ pool, tableName, taskName, taskInstance, workerId });
     } catch (error) {
-      logger.error("Failed to send heartbeat", error);
+      logger.error('Failed to send heartbeat', error);
     }
     if (!stopped) {
       timer = setTimeout(tick, intervalMs);
@@ -267,12 +267,11 @@ export function startWorker({
   heartbeatIntervalMs?: number;
   logger?: Logger;
 }): WorkerHandle {
-
   let stopping = false;
   let cyclePromise: Promise<void> = Promise.resolve();
   let sleepAbort: (() => void) | null = null;
 
-  async function run() {
+  async function run(): Promise<void> {
     while (!stopping) {
       cyclePromise = runWorkerCycle({
         pool,
@@ -283,7 +282,7 @@ export function startWorker({
         heartbeatIntervalMs,
         logger,
       }).catch((error) => {
-        logger.error("Worker cycle failed", error);
+        logger.error('Worker cycle failed', error);
       });
 
       await cyclePromise;
@@ -298,11 +297,11 @@ export function startWorker({
   }
 
   run().catch((error) => {
-    logger.error("Scheduler worker crashed", error);
+    logger.error('Scheduler worker crashed', error);
   });
 
   return {
-    async shutdown(timeoutMs = 30000) {
+    async shutdown(timeoutMs = 30000): Promise<void> {
       stopping = true;
       sleepAbort?.();
 

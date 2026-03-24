@@ -1,7 +1,7 @@
-import { execSync } from "child_process";
-import { PostgreSqlContainer } from "@testcontainers/postgresql";
-import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import pg from "pg";
+import { execSync } from 'child_process';
+import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import pg from 'pg';
 
 const { Client } = pg;
 
@@ -13,14 +13,16 @@ export async function setup() {
   if (!process.env.DOCKER_HOST) {
     try {
       const host = execSync('docker context inspect --format "{{.Endpoints.docker.Host}}"', {
-        encoding: "utf8",
-      }).trim().replace(/^"|"$/g, "");
+        encoding: 'utf8',
+      })
+        .trim()
+        .replace(/^"|"$/g, '');
       if (host) {
         process.env.DOCKER_HOST = host;
         // When using a non-standard socket (e.g. Colima), Testcontainers needs to know
         // the path *inside* the VM where it mounts the socket for its Ryuk reaper container.
         if (!process.env.TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE) {
-          process.env.TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = "/var/run/docker.sock";
+          process.env.TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = '/var/run/docker.sock';
         }
       }
     } catch {
@@ -28,7 +30,7 @@ export async function setup() {
     }
   }
 
-  container = await new PostgreSqlContainer("postgres:16").start();
+  container = await new PostgreSqlContainer('postgres:16').start();
 
   process.env.TEST_PG_HOST = container.getHost();
   process.env.TEST_PG_PORT = String(container.getMappedPort(5432));

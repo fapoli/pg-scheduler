@@ -1,4 +1,4 @@
-export const UPDATE_DUE_TASKS_PICKED_SQL = (table: string) => `
+export const UPDATE_DUE_TASKS_PICKED_SQL = (table: string): string => `
   UPDATE ${table}
   SET picked = TRUE,
       picked_by = $2,
@@ -30,7 +30,7 @@ export const UPDATE_DUE_TASKS_PICKED_SQL = (table: string) => `
     ${table}.priority
 `;
 
-export const UPDATE_TASK_SUCCESS_SQL = (table: string) => `
+export const UPDATE_TASK_SUCCESS_SQL = (table: string): string => `
   UPDATE ${table}
   SET execution_time = $3,
       picked = FALSE,
@@ -44,7 +44,7 @@ export const UPDATE_TASK_SUCCESS_SQL = (table: string) => `
     AND picked_by = $4
 `;
 
-export const UPDATE_TASK_FAILURE_SQL = (table: string) => `
+export const UPDATE_TASK_FAILURE_SQL = (table: string): string => `
   UPDATE ${table}
   SET execution_time = $3,
       picked = FALSE,
@@ -58,7 +58,7 @@ export const UPDATE_TASK_FAILURE_SQL = (table: string) => `
     AND picked_by = $4
 `;
 
-export const UPDATE_TASK_HEARTBEAT_SQL = (table: string) => `
+export const UPDATE_TASK_HEARTBEAT_SQL = (table: string): string => `
   UPDATE ${table}
   SET last_heartbeat = NOW(),
       version = version + 1
@@ -67,7 +67,7 @@ export const UPDATE_TASK_HEARTBEAT_SQL = (table: string) => `
     AND picked_by = $3
 `;
 
-export const UPDATE_TIMED_OUT_EXECUTIONS_SQL = (table: string) => `
+export const UPDATE_TIMED_OUT_EXECUTIONS_SQL = (table: string): string => `
   UPDATE ${table}
   SET picked = FALSE,
       picked_by = NULL,
@@ -78,21 +78,20 @@ export const UPDATE_TIMED_OUT_EXECUTIONS_SQL = (table: string) => `
       OR last_heartbeat < NOW() - ($1 * INTERVAL '1 millisecond'))
 `;
 
-export const DELETE_TASK_SQL = (tableName: string) => `
+export const DELETE_TASK_SQL = (tableName: string): string => `
   DELETE FROM ${tableName}
   WHERE task_name = $1
     AND task_instance = $2
     AND picked_by = $3
 `;
 
-
-export const INSERT_TASK_IF_NOT_EXISTS_SQL = (tableName: string) => `
+export const INSERT_TASK_IF_NOT_EXISTS_SQL = (tableName: string): string => `
   INSERT INTO ${tableName} (task_name, task_instance, task_data, execution_time)
   VALUES ($1, $2, $3, $4)
   ON CONFLICT (task_name, task_instance) DO NOTHING
 `;
 
-export const UPDATE_TASK_SCHEDULE_SQL = (tableName: string) => `
+export const UPDATE_TASK_SCHEDULE_SQL = (tableName: string): string => `
   UPDATE ${tableName}
   SET execution_time = $3,
       task_data = $4,
