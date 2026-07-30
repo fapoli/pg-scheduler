@@ -10,7 +10,8 @@ vi.mock('../../src/postgres/store.js', () => ({
   heartbeat: vi.fn(),
 }));
 
-import { runWorkerCycle, oneTime, recurring } from '../../src/worker/worker.js';
+import { parseCronExpression } from 'cron-schedule';
+import { runWorkerCycle, oneTime, recurring, cron } from '../../src/worker/worker.js';
 import * as store from '../../src/postgres/store.js';
 
 const mockPool = {} as Pool;
@@ -186,5 +187,67 @@ describe('runWorkerCycle', () => {
     expect(store.updateTimedOutExecutions).toHaveBeenCalledWith(
       expect.objectContaining({ heartbeatTimeoutMs: 60000 })
     );
+  });
+});
+
+describe('cron', () => {
+  it('throws immediately when the cron expression is invalid', () => {
+    expect(() =>
+      cron({
+        name: 'wc-cron-invalid',
+        cronExpression: 'not a cron expression',
+        run: async () => {},
+      })
+    ).toThrow();
+  });
+
+  it('computes nextExecutionTime from the cron expression via getNextDate', async () => {
+    const now = new Date(2026, 7, 4, 0, 0, 0); // Tue Aug 4, 2026, local time
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    try {
+      cron({ name: 'wc-cron', cronExpression: '0 2 * * 1', run: async () => {} });
+      vi.mocked(store.pickDueTasks).mockResolvedValue([
+        makeScheduledTask({
+          task_name: 'wc-cron',
+          execution_time: new Date(now.getTime() - 60000),
+        }),
+      ] as any);
+
+      await runWorkerCycle(baseParams);
+
+      const expected = parseCronExpression('0 2 * * 1').getNextDate(now);
+      expect(store.markSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({ nextExecutionTime: expected })
+      );
+      // Sanity check: it's actually the following Monday at 02:00, not just
+      // "some date the mock happened to accept".
+      expect(expected.getDay()).toBe(1);
+      expect(expected.getHours()).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('deletes a cron task when failureHandler returns null (retries exhausted)', async () => {
+    const failureHandler = vi.fn().mockReturnValue(null);
+    cron({
+      name: 'wc-cron-failing',
+      cronExpression: '0 2 * * 1',
+      run: async () => {
+        throw new Error('boom');
+      },
+      failureHandler,
+    });
+    vi.mocked(store.pickDueTasks).mockResolvedValue([
+      makeScheduledTask({ task_name: 'wc-cron-failing' }),
+    ] as any);
+
+    await runWorkerCycle(baseParams);
+
+    expect(failureHandler).toHaveBeenCalledOnce();
+    expect(store.deleteTask).toHaveBeenCalledOnce();
+    expect(store.markFailure).not.toHaveBeenCalled();
   });
 });
