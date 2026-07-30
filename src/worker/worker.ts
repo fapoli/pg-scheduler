@@ -1,5 +1,6 @@
 import os from 'os';
 import type { Pool } from 'pg';
+import { parseCronExpression } from 'cron-schedule';
 import {
   pickDueTasks,
   markSuccess,
@@ -64,6 +65,33 @@ export function recurring<T = unknown>(params: {
     run: params.run,
     nextExecutionTime: (currentExecutionTime: Date) =>
       new Date(Math.max(Date.now(), currentExecutionTime.getTime()) + params.intervalMs),
+    failureHandler: params.failureHandler,
+  });
+}
+
+// Cron expressions are evaluated in the server's local time zone (like
+// crontab without CRON_TZ set) — cron-schedule has no built-in IANA
+// timezone support.
+export function cron<T = unknown>(params: {
+  name: string;
+  cronExpression: string;
+  run(data: T | null): Promise<void>;
+  failureHandler?(params: {
+    executionTime: Date;
+    consecutiveFailures: number;
+    taskData: T | null;
+    error: unknown;
+  }): Date | null;
+}): void {
+  // Parsed eagerly so a malformed expression throws at registration time
+  // instead of failing silently the first time the task is due.
+  const parsedCron = parseCronExpression(params.cronExpression);
+
+  tasks.set(params.name, {
+    name: params.name,
+    run: params.run,
+    nextExecutionTime: (currentExecutionTime: Date) =>
+      parsedCron.getNextDate(new Date(Math.max(Date.now(), currentExecutionTime.getTime()))),
     failureHandler: params.failureHandler,
   });
 }

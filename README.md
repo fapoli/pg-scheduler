@@ -17,13 +17,15 @@ This project uses PostgreSQL as a coordination layer to ensure that tasks are ex
 ## Features
 
 - Distributed-safe via `FOR UPDATE SKIP LOCKED`
-- One-time and recurring tasks
+- One-time, fixed-interval, and cron-scheduled recurring tasks
 - Heartbeat-based dead execution recovery
 - Configurable failure handlers with exponential backoff, fixed delay, or max retries
 - Graceful shutdown
-- No external dependencies beyond `pg`
+- No external dependencies beyond `pg` and [`cron-schedule`](https://www.npmjs.com/package/cron-schedule) (used only for its expression parser/next-date calculation — this library's own worker still owns polling and execution)
 
 ## Installation
+
+Requires Node.js >= 20.
 
 ```bash
 npm install @fapoli/pg-scheduler
@@ -141,6 +143,24 @@ recurring({
   },
 });
 ```
+
+### Cron tasks
+
+Cron tasks work like recurring tasks, but the next execution is computed from a cron expression instead of a fixed interval. The expression is parsed once at registration time — an invalid expression throws immediately rather than failing later.
+
+```ts
+import { cron } from '@fapoli/pg-scheduler';
+
+cron({
+  name: 'weekly-report',
+  cronExpression: '0 2 * * 1', // 02:00 every Monday
+  run: async (data) => {
+    /* ... */
+  },
+});
+```
+
+Cron expressions are evaluated in the server's local time zone (like `crontab` without `CRON_TZ` set) — there's no per-task IANA timezone override.
 
 ### Scheduling tasks
 
