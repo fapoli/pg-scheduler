@@ -73,6 +73,7 @@ describe('runWorkerCycle', () => {
     await runWorkerCycle(baseParams);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('No handler registered'));
     expect(store.deleteTask).toHaveBeenCalledOnce();
+    expect(store.deleteTask).toHaveBeenCalledWith(expect.objectContaining({ version: 1 }));
   });
 
   it('deletes a one-time task after successful execution', async () => {

@@ -1,7 +1,7 @@
 # @fapoli/pg-scheduler
 
 [![npm](https://img.shields.io/npm/v/@fapoli/pg-scheduler)](https://www.npmjs.com/package/@fapoli/pg-scheduler)
-[![GitHub repo](https://img.shields.io/badge/github-fapoli%2Flospec--cli-blue?logo=github)](https://github.com/fapoli/lospec-cli)
+[![GitHub repo](https://img.shields.io/badge/github-fapoli%2Fpg--scheduler-blue?logo=github)](https://github.com/fapoli/pg-scheduler)
 [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 
 A PostgreSQL-backed distributed task scheduler for Node.js. Inspired by [db-scheduler](https://github.com/kagkarlsson/db-scheduler).
@@ -92,8 +92,18 @@ recurring({
 });
 
 // Schedule initial executions (ON CONFLICT DO NOTHING — safe to call on every boot)
-await scheduleTask({ pool, taskName: 'send-welcome-email', taskInstance: 'user-123', taskData: { userId: 'user-123' } });
-await scheduleTask({ pool, taskName: 'cleanup-expired-sessions', taskInstance: 'default', taskData: null });
+await scheduleTask({
+  pool,
+  taskName: 'send-welcome-email',
+  taskInstance: 'user-123',
+  taskData: { userId: 'user-123' },
+});
+await scheduleTask({
+  pool,
+  taskName: 'cleanup-expired-sessions',
+  taskInstance: 'default',
+  taskData: null,
+});
 
 // Start the worker
 const worker = startWorker({ pool });
@@ -112,7 +122,9 @@ One-time tasks are deleted after successful execution.
 ```ts
 oneTime({
   name: 'my-task',
-  run: async (data) => { /* ... */ },
+  run: async (data) => {
+    /* ... */
+  },
 });
 ```
 
@@ -124,7 +136,9 @@ Recurring tasks reschedule themselves after each successful execution based on `
 recurring({
   name: 'my-recurring-task',
   intervalMs: 5 * 60 * 1000, // every 5 minutes
-  run: async (data) => { /* ... */ },
+  run: async (data) => {
+    /* ... */
+  },
 });
 ```
 
@@ -138,7 +152,8 @@ await scheduleTask({
   taskInstance: 'unique-instance-id',
   taskData: { foo: 'bar' }, // pass null if no data
   executionTime: new Date(Date.now() + 5000), // optional, defaults to now
-  tableName: 'scheduled_tasks',              // optional, defaults to 'scheduled_tasks'
+  priority: 10, // optional, higher runs first
+  tableName: 'scheduled_tasks', // optional, defaults to 'scheduled_tasks'
 });
 
 // Reschedule an existing task (throws if not found or currently running)
@@ -148,9 +163,14 @@ await rescheduleTask({
   taskInstance: 'unique-instance-id',
   taskData: { foo: 'baz' },
   executionTime: new Date(Date.now() + 10000),
-  tableName: 'scheduled_tasks',              // optional, defaults to 'scheduled_tasks'
+  priority: 10, // optional, omit to leave unchanged
+  tableName: 'scheduled_tasks', // optional, defaults to 'scheduled_tasks'
 });
 ```
+
+### Priority
+
+Tasks with a higher `priority` are picked before tasks with a lower (or no) priority whenever both are due. Ties are broken by `executionTime` ascending. Priority is optional — tasks without one are treated as lowest priority.
 
 ### Failure handlers
 
@@ -160,13 +180,15 @@ import { exponentialBackoff, fixedDelay, maxRetries } from '@fapoli/pg-scheduler
 recurring({
   name: 'my-task',
   intervalMs: 60000,
-  run: async () => { /* ... */ },
+  run: async () => {
+    /* ... */
+  },
   failureHandler: exponentialBackoff(1000, 5), // 1s initial delay, max 5 retries
 });
 
 // Other built-ins
-fixedDelay(5000, 3)   // retry every 5s, max 3 times
-maxRetries(3)          // retry immediately, max 3 times
+fixedDelay(5000, 3); // retry every 5s, max 3 times
+maxRetries(3); // retry immediately, max 3 times
 ```
 
 ### Worker options
@@ -174,13 +196,13 @@ maxRetries(3)          // retry immediately, max 3 times
 ```ts
 startWorker({
   pool,
-  tableName: 'scheduled_tasks',     // default
-  workerId: 'my-worker-1',          // default: hostname-pid
-  pollingIntervalMs: 10000,         // default: 10s
-  batchSize: 10,                    // default: 10
-  heartbeatTimeoutMs: 300000,       // default: 5 minutes
-  heartbeatIntervalMs: 100000,      // default: heartbeatTimeoutMs / 3
-  logger: console,                  // default: console — inject your own
+  tableName: 'scheduled_tasks', // default
+  workerId: 'my-worker-1', // default: hostname-pid
+  pollingIntervalMs: 10000, // default: 10s
+  batchSize: 10, // default: 10
+  heartbeatTimeoutMs: 300000, // default: 5 minutes
+  heartbeatIntervalMs: 100000, // default: heartbeatTimeoutMs / 3
+  logger: console, // default: console — inject your own
 });
 ```
 
