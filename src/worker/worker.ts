@@ -107,6 +107,7 @@ export async function runWorkerCycle(params: {
           taskName: scheduledTask.task_name,
           taskInstance: scheduledTask.task_instance,
           workerId,
+          version: scheduledTask.version,
           logger,
         });
         return;
@@ -120,6 +121,7 @@ export async function runWorkerCycle(params: {
               taskName: scheduledTask.task_name,
               taskInstance: scheduledTask.task_instance,
               workerId,
+              version: scheduledTask.version,
               intervalMs: heartbeatIntervalMs,
               logger,
             })
@@ -140,6 +142,7 @@ export async function runWorkerCycle(params: {
             taskName: scheduledTask.task_name,
             taskInstance: scheduledTask.task_instance,
             workerId,
+            version: scheduledTask.version,
             logger,
           });
           return;
@@ -182,6 +185,7 @@ export async function runWorkerCycle(params: {
             taskName: scheduledTask.task_name,
             taskInstance: scheduledTask.task_instance,
             workerId,
+            version: scheduledTask.version,
             logger,
           });
           return;
@@ -208,10 +212,11 @@ function startHeartbeat(params: {
   taskName: string;
   taskInstance: string;
   workerId: string;
+  version: number;
   intervalMs: number;
   logger: Logger;
 }): () => void {
-  const { pool, tableName, taskName, taskInstance, workerId, intervalMs, logger } = params;
+  const { pool, tableName, taskName, taskInstance, workerId, version, intervalMs, logger } = params;
 
   let stopped = false;
   let timer: NodeJS.Timeout | null = null;
@@ -219,7 +224,7 @@ function startHeartbeat(params: {
   async function tick(): Promise<void> {
     if (stopped) return;
     try {
-      await heartbeat({ pool, tableName, taskName, taskInstance, workerId });
+      await heartbeat({ pool, tableName, taskName, taskInstance, workerId, version });
     } catch (error) {
       logger.error('Failed to send heartbeat', error);
     }

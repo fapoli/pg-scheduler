@@ -42,6 +42,7 @@ export const UPDATE_TASK_SUCCESS_SQL = (table: string): string => `
   WHERE task_name = $1
     AND task_instance = $2
     AND picked_by = $4
+    AND version = $5
 `;
 
 export const UPDATE_TASK_FAILURE_SQL = (table: string): string => `
@@ -56,15 +57,19 @@ export const UPDATE_TASK_FAILURE_SQL = (table: string): string => `
   WHERE task_name = $1
     AND task_instance = $2
     AND picked_by = $4
+    AND version = $5
 `;
 
+// Deliberately does not bump version: the version captured at pick time
+// must stay valid as the concurrency guard for the whole lifetime of the
+// execution (heartbeats, and the eventual success/failure/delete).
 export const UPDATE_TASK_HEARTBEAT_SQL = (table: string): string => `
   UPDATE ${table}
-  SET last_heartbeat = NOW(),
-      version = version + 1
+  SET last_heartbeat = NOW()
   WHERE task_name = $1
     AND task_instance = $2
     AND picked_by = $3
+    AND version = $4
 `;
 
 export const UPDATE_TIMED_OUT_EXECUTIONS_SQL = (table: string): string => `
@@ -83,11 +88,12 @@ export const DELETE_TASK_SQL = (tableName: string): string => `
   WHERE task_name = $1
     AND task_instance = $2
     AND picked_by = $3
+    AND version = $4
 `;
 
 export const INSERT_TASK_IF_NOT_EXISTS_SQL = (tableName: string): string => `
-  INSERT INTO ${tableName} (task_name, task_instance, task_data, execution_time)
-  VALUES ($1, $2, $3, $4)
+  INSERT INTO ${tableName} (task_name, task_instance, task_data, execution_time, priority)
+  VALUES ($1, $2, $3, $4, $5)
   ON CONFLICT (task_name, task_instance) DO NOTHING
 `;
 
@@ -95,6 +101,7 @@ export const UPDATE_TASK_SCHEDULE_SQL = (tableName: string): string => `
   UPDATE ${tableName}
   SET execution_time = $3,
       task_data = $4,
+      priority = COALESCE($5, priority),
       version = version + 1
   WHERE task_name = $1
     AND task_instance = $2

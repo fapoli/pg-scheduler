@@ -100,11 +100,12 @@ export async function markSuccess(params: {
     task.task_instance,
     nextExecutionTime,
     workerId,
+    task.version,
   ]);
 
   if (result.rowCount === 0) {
     logger.warn(
-      `markSuccess had no effect for task "${task.task_name}" (instance: "${task.task_instance}"): task may have been recovered and re-picked by another worker`
+      `markSuccess had no effect for task "${task.task_name}" (instance: "${task.task_instance}"): task may have been recovered and re-picked since this execution started (possibly by this same worker)`
     );
   }
 }
@@ -125,11 +126,12 @@ export async function markFailure(params: {
     task.task_instance,
     nextExecutionTime,
     workerId,
+    task.version,
   ]);
 
   if (result.rowCount === 0) {
     logger.warn(
-      `markFailure had no effect for task "${task.task_name}" (instance: "${task.task_instance}"): task may have been recovered and re-picked by another worker`
+      `markFailure had no effect for task "${task.task_name}" (instance: "${task.task_instance}"): task may have been recovered and re-picked since this execution started (possibly by this same worker)`
     );
   }
 }
@@ -140,11 +142,17 @@ export async function heartbeat(params: {
   taskName: string;
   taskInstance: string;
   workerId: string;
+  version: number;
 }): Promise<void> {
-  const { pool, tableName, taskName, taskInstance, workerId } = params;
+  const { pool, tableName, taskName, taskInstance, workerId, version } = params;
   assertValidTableName(tableName);
 
-  await query(pool, UPDATE_TASK_HEARTBEAT_SQL(tableName), [taskName, taskInstance, workerId]);
+  await query(pool, UPDATE_TASK_HEARTBEAT_SQL(tableName), [
+    taskName,
+    taskInstance,
+    workerId,
+    version,
+  ]);
 }
 
 export async function updateTimedOutExecutions(params: {
@@ -168,16 +176,22 @@ export async function deleteTask(params: {
   taskName: string;
   taskInstance: string;
   workerId: string;
+  version: number;
   logger: Logger;
 }): Promise<void> {
-  const { pool, tableName, taskName, taskInstance, workerId, logger } = params;
+  const { pool, tableName, taskName, taskInstance, workerId, version, logger } = params;
   assertValidTableName(tableName);
 
-  const result = await query(pool, DELETE_TASK_SQL(tableName), [taskName, taskInstance, workerId]);
+  const result = await query(pool, DELETE_TASK_SQL(tableName), [
+    taskName,
+    taskInstance,
+    workerId,
+    version,
+  ]);
 
   if (result.rowCount === 0) {
     logger.warn(
-      `deleteTask had no effect for task "${taskName}" (instance: "${taskInstance}"): task may have been recovered and re-picked by another worker`
+      `deleteTask had no effect for task "${taskName}" (instance: "${taskInstance}"): task may have been recovered and re-picked since this execution started (possibly by this same worker)`
     );
   }
 }
@@ -189,6 +203,7 @@ export async function scheduleTask({
   taskInstance,
   taskData,
   executionTime,
+  priority,
 }: {
   pool: Pool;
   tableName?: string;
@@ -196,6 +211,7 @@ export async function scheduleTask({
   taskInstance: string;
   taskData: unknown;
   executionTime?: Date;
+  priority?: number;
 }): Promise<void> {
   assertValidTableName(tableName);
 
@@ -204,6 +220,7 @@ export async function scheduleTask({
     taskInstance,
     taskData,
     executionTime ?? new Date(),
+    priority ?? null,
   ]);
 }
 
@@ -214,6 +231,7 @@ export async function rescheduleTask({
   taskInstance,
   taskData,
   executionTime,
+  priority,
 }: {
   pool: Pool;
   tableName?: string;
@@ -221,6 +239,7 @@ export async function rescheduleTask({
   taskInstance: string;
   taskData: unknown;
   executionTime: Date;
+  priority?: number;
 }): Promise<void> {
   assertValidTableName(tableName);
 
@@ -229,6 +248,7 @@ export async function rescheduleTask({
     taskInstance,
     executionTime,
     taskData,
+    priority ?? null,
   ]);
 
   if (result.rowCount === 0) {

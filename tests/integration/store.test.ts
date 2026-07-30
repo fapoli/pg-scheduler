@@ -102,6 +102,33 @@ describe('scheduleTask', () => {
     // Second call should have done nothing (ON CONFLICT DO NOTHING)
     expect(new Date(row.execution_time).getTime()).toBeCloseTo(time1.getTime(), -3);
   });
+
+  it('sets the given priority', async () => {
+    await scheduleTask({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      taskData: null,
+      priority: 10,
+    });
+
+    const row = await getRow('t1', 'i1');
+    expect(row.priority).toBe(10);
+  });
+
+  it('defaults to no priority when omitted', async () => {
+    await scheduleTask({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      taskData: null,
+    });
+
+    const row = await getRow('t1', 'i1');
+    expect(row.priority).toBeNull();
+  });
 });
 
 describe('pickDueTasks', () => {
@@ -283,6 +310,38 @@ describe('markSuccess', () => {
     const row = await getRow('t1', 'i1');
     expect(row.consecutive_failures).toBe(0);
   });
+
+  it('has no effect when the version is stale', async () => {
+    await scheduleTask({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      taskData: null,
+      executionTime: new Date(Date.now() - 1000),
+    });
+    const [staleTask] = await pickDueTasks({ pool, tableName: TABLE, workerId: WORKER, limit: 1 });
+
+    // Simulate the task being recovered and re-picked by the same worker
+    // before the stale (first) execution reports success.
+    await updateTimedOutExecutions({ pool, tableName: TABLE, heartbeatTimeoutMs: 0 });
+    await pickDueTasks({ pool, tableName: TABLE, workerId: WORKER, limit: 1 });
+    const before = await getRow('t1', 'i1');
+
+    await markSuccess({
+      pool,
+      tableName: TABLE,
+      task: staleTask,
+      nextExecutionTime: new Date(Date.now() + 60000),
+      workerId: WORKER,
+      logger,
+    });
+
+    const after = await getRow('t1', 'i1');
+    expect(after.picked).toBe(before.picked);
+    expect(after.picked_by).toBe(before.picked_by);
+    expect(after.last_success).toBeNull();
+  });
 });
 
 describe('markFailure', () => {
@@ -314,6 +373,36 @@ describe('markFailure', () => {
     expect(row.last_failure).not.toBeNull();
     expect(new Date(row.execution_time).getTime()).toBeCloseTo(nextTime.getTime(), -3);
   });
+
+  it('has no effect when the version is stale', async () => {
+    await scheduleTask({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      taskData: null,
+      executionTime: new Date(Date.now() - 1000),
+    });
+    const [staleTask] = await pickDueTasks({ pool, tableName: TABLE, workerId: WORKER, limit: 1 });
+
+    await updateTimedOutExecutions({ pool, tableName: TABLE, heartbeatTimeoutMs: 0 });
+    await pickDueTasks({ pool, tableName: TABLE, workerId: WORKER, limit: 1 });
+    const before = await getRow('t1', 'i1');
+
+    await markFailure({
+      pool,
+      tableName: TABLE,
+      task: staleTask,
+      nextExecutionTime: new Date(Date.now() + 5000),
+      workerId: WORKER,
+      logger,
+    });
+
+    const after = await getRow('t1', 'i1');
+    expect(after.picked).toBe(before.picked);
+    expect(after.consecutive_failures).toBe(before.consecutive_failures);
+    expect(after.last_failure).toBeNull();
+  });
 });
 
 describe('deleteTask', () => {
@@ -326,6 +415,36 @@ describe('deleteTask', () => {
       taskData: null,
       executionTime: new Date(Date.now() - 1000),
     });
+    const [task] = await pickDueTasks({ pool, tableName: TABLE, workerId: WORKER, limit: 1 });
+
+    await deleteTask({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      workerId: WORKER,
+      version: task.version,
+      logger,
+    });
+
+    const row = await getRow('t1', 'i1');
+    expect(row).toBeNull();
+  });
+
+  it('does not delete when the version is stale', async () => {
+    await scheduleTask({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      taskData: null,
+      executionTime: new Date(Date.now() - 1000),
+    });
+    const [task] = await pickDueTasks({ pool, tableName: TABLE, workerId: WORKER, limit: 1 });
+
+    // Simulate the task being recovered and re-picked by the same worker
+    // before the original (stale) execution gets around to deleting it.
+    await updateTimedOutExecutions({ pool, tableName: TABLE, heartbeatTimeoutMs: 0 });
     await pickDueTasks({ pool, tableName: TABLE, workerId: WORKER, limit: 1 });
 
     await deleteTask({
@@ -334,11 +453,12 @@ describe('deleteTask', () => {
       taskName: 't1',
       taskInstance: 'i1',
       workerId: WORKER,
+      version: task.version,
       logger,
     });
 
     const row = await getRow('t1', 'i1');
-    expect(row).toBeNull();
+    expect(row).not.toBeNull();
   });
 });
 
@@ -366,6 +486,55 @@ describe('rescheduleTask', () => {
     const row = await getRow('t1', 'i1');
     expect(row.task_data).toEqual({ v: 2 });
     expect(new Date(row.execution_time).getTime()).toBeCloseTo(newTime.getTime(), -3);
+  });
+
+  it('updates priority when given', async () => {
+    await scheduleTask({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      taskData: null,
+      executionTime: new Date(Date.now() - 1000),
+      priority: 5,
+    });
+
+    await rescheduleTask({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      taskData: null,
+      executionTime: new Date(Date.now() + 10000),
+      priority: 20,
+    });
+
+    const row = await getRow('t1', 'i1');
+    expect(row.priority).toBe(20);
+  });
+
+  it('leaves priority unchanged when omitted', async () => {
+    await scheduleTask({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      taskData: null,
+      executionTime: new Date(Date.now() - 1000),
+      priority: 5,
+    });
+
+    await rescheduleTask({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      taskData: null,
+      executionTime: new Date(Date.now() + 10000),
+    });
+
+    const row = await getRow('t1', 'i1');
+    expect(row.priority).toBe(5);
   });
 
   it('throws when the task does not exist', async () => {
@@ -456,7 +625,7 @@ describe('updateTimedOutExecutions', () => {
 });
 
 describe('heartbeat', () => {
-  it('updates last_heartbeat for a picked task', async () => {
+  it('updates last_heartbeat for a picked task without changing its version', async () => {
     await scheduleTask({
       pool,
       tableName: TABLE,
@@ -465,7 +634,7 @@ describe('heartbeat', () => {
       taskData: null,
       executionTime: new Date(Date.now() - 1000),
     });
-    await pickDueTasks({ pool, tableName: TABLE, workerId: WORKER, limit: 1 });
+    const [task] = await pickDueTasks({ pool, tableName: TABLE, workerId: WORKER, limit: 1 });
 
     // Backdate the heartbeat
     await pool.query(`UPDATE ${TABLE} SET last_heartbeat = NOW() - INTERVAL '1 minute'`);
@@ -477,10 +646,46 @@ describe('heartbeat', () => {
       taskName: 't1',
       taskInstance: 'i1',
       workerId: WORKER,
+      version: task.version,
     });
 
     const after = await getRow('t1', 'i1');
     expect(new Date(after.last_heartbeat).getTime()).toBeGreaterThan(
+      new Date(before.last_heartbeat).getTime()
+    );
+    // The version captured at pick time must stay valid as the concurrency
+    // guard for the rest of the execution's lifetime.
+    expect(after.version).toBe(before.version);
+  });
+
+  it('does not update last_heartbeat when the version is stale', async () => {
+    await scheduleTask({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      taskData: null,
+      executionTime: new Date(Date.now() - 1000),
+    });
+    const [task] = await pickDueTasks({ pool, tableName: TABLE, workerId: WORKER, limit: 1 });
+
+    // Simulate the task being recovered and re-picked by the same worker
+    // while a stale execution from the first pick is still running.
+    await updateTimedOutExecutions({ pool, tableName: TABLE, heartbeatTimeoutMs: 0 });
+    await pickDueTasks({ pool, tableName: TABLE, workerId: WORKER, limit: 1 });
+    const before = await getRow('t1', 'i1');
+
+    await heartbeat({
+      pool,
+      tableName: TABLE,
+      taskName: 't1',
+      taskInstance: 'i1',
+      workerId: WORKER,
+      version: task.version,
+    });
+
+    const after = await getRow('t1', 'i1');
+    expect(new Date(after.last_heartbeat).getTime()).toBe(
       new Date(before.last_heartbeat).getTime()
     );
   });
